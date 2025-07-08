@@ -3,3 +3,5 @@ facereg_env/
 models/
 data/
 sample_images/
+fhe-server-env/
+context/

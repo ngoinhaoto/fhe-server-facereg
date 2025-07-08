@@ -5,10 +5,14 @@ from security.auth import oauth2_scheme  # Import the OAuth2 scheme
 from sqlalchemy.orm import Session
 from database.db import get_db
 import uvicorn
-from routers import auth, users, classes, attendance
-from routers.admin import dashboard  # Import the admin dashboard router
+from routers import auth, users, classes, attendance, fhe
+from routers.admin import dashboard  
+from utils.tenseal_context import load_public_context
+import os
 
-# Create your FastAPI instance with security scheme
+CONTEXT_DIR = os.getenv("CONTEXT_DIR", "context")
+PUBLIC_PATH = os.path.join(CONTEXT_DIR, "public.txt")
+
 app = FastAPI(
     title="Face Recognition System",
     description="API for face recognition attendance system",
@@ -36,11 +40,19 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(classes.router)
 app.include_router(attendance.router)
+app.include_router(fhe.router)
 app.include_router(
     dashboard.router,
     prefix="/admin",
     tags=["Admin"]
 )
+
+public_context = None
+if os.path.exists(PUBLIC_PATH):
+    public_context = load_public_context()
+    print(f"[INFO] TenSEAL public context loaded from {PUBLIC_PATH}")
+else:
+    print(f"[WARNING] TenSEAL public context not found at {PUBLIC_PATH}. Encrypted operations will fail.")
 
 @app.get("/")
 def read_root():

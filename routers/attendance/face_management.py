@@ -4,7 +4,7 @@ from database.db import get_db
 from services.face_recognition import FaceRecognitionService
 from schemas.user import UserResponse
 from security.auth import get_current_active_user
-from models.database import FaceEmbedding, FaceImage, User
+from models.database import FaceEmbedding, User
 from starlette.concurrency import run_in_threadpool
 import base64
 from typing import Dict, List, Optional, Tuple
@@ -13,6 +13,8 @@ from utils.logging import logger
 from config.face_recognition_config import face_recognition_config
 from services.face_recognition.duplicate_detection import DuplicateFaceDetector
 import uuid
+from utils.tenseal_context import load_public_context
+import tenseal as ts
 
 router = APIRouter()
 
@@ -99,16 +101,6 @@ async def register_face(
         )
     )
     
-    if aligned_face_primary and embedding_id_primary:
-        try:
-            face_image = FaceImage(
-                embedding_id=embedding_id_primary,
-                image_data=aligned_face_primary
-            )
-            db.add(face_image)
-            db.commit()
-        except Exception as e:
-            logger.error(f"Error storing face image: {str(e)}")
     
     # If requested, also store with the secondary model (with the same group ID)
     embedding_id_secondary = None
@@ -139,17 +131,6 @@ async def register_face(
                     )
                 )
                 
-                # Also store the face image for the secondary embedding
-                if aligned_face_primary and embedding_id_secondary:
-                    try:
-                        secondary_face_image = FaceImage(
-                            embedding_id=embedding_id_secondary,
-                            image_data=aligned_face_primary
-                        )
-                        db.add(secondary_face_image)
-                        db.commit()
-                    except Exception as e:
-                        logger.error(f"Error storing face image for secondary model: {str(e)}")
                 
                 logger.info(f"Successfully stored secondary embedding with {other_model}")
         except Exception as e:
@@ -355,3 +336,13 @@ async def get_face_recognition_settings(
         }
     }
 
+
+@router.post("/test-similarity/")
+async def test_similarity(file: UploadFile = File(...)):
+    enc_bytes = await file.read()
+    context = load_public_context()
+    enc_vec = ts.lazy_ckks_vector_from(enc_bytes)
+    enc_vec.link_context(context)
+    enc_result = enc_vec.dot(enc_vec)
+    # Base64 encode for transport
+    return {"result": base64.b64encode(enc_result.serialize()).decode("utf-8")}
