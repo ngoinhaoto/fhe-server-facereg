@@ -1,7 +1,7 @@
 facereg_env/
 .env
-models/
 data/
 sample_images/
 fhe-server-env/
 context/
+*.pyc
