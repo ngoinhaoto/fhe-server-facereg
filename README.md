@@ -140,7 +140,3 @@ The email system ensures secure, automated communication for password resets, on
 - If FHE context files are missing, they will be generated automatically on first run.
 
 ---
-
-## License
-
-MIT (or your chosen license)
